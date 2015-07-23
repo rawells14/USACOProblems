@@ -23,7 +23,8 @@ public class connect {
                 if (cows[i].y == cows[j].y) {
                     if (cows[i].x > cows[j].x) {
                         cows[i].left.add(cows[j]);
-                    } else {
+                    }
+                    else {
                         cows[i].right.add(cows[j]);
                     }
                 }
