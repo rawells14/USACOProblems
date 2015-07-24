@@ -1,100 +1,140 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Scanner;
+import java.util.*;
+
 
 public class paint {
+
+    public static ArrayList<Interval> intervals = new ArrayList<>();
     public static int[] commands;
-    public static int currentPosition = 0;
-    public static ArrayList<Interval> overlaps = new ArrayList<Interval>();
+
 
     public static void main(String[] args) throws FileNotFoundException {
         Scanner scn = new Scanner(new File("InputFIles/1.in"));
         int n = scn.nextInt();
-        commands = new int[n + 1];
-        for (int i = 1; i < n; i++) {
-            int mag = scn.nextInt();
-            char dir = scn.next().charAt(0);
-            if (dir == 'L') {
-                mag = mag - mag - mag;
+        int k = scn.nextInt();
+        commands = new int[n];
+
+        for (int i = 0; i < n; i++) {
+            int magnitude = scn.nextInt();
+            char direction = scn.next().charAt(0);
+            if (direction == 'L') {
+                magnitude = magnitude - magnitude - magnitude;
             }
-            commands[i] = mag += commands[i - 1];
-
+            commands[i] = magnitude;
         }
 
 
-        int currentPosition = 0;
-
-        for (int i = 1; i < commands.length; i++) {
-            Interval a = new Interval(currentPosition, commands[i]);
-            overlaps.add(a);
-            connectOverlaps();
-            currentPosition += commands[i];
+        int currentPos = 0;
+        for (int i = 0; i < commands.length; i++) {
+            int st = Math.min(currentPos, commands[i] + currentPos);
+            int en = Math.max(currentPos, commands[i] + currentPos);
+            intervals.add(new Interval(st, en, 1));
+            currentPos += commands[i];
         }
 
+        combine();
 
-        System.out.println(Arrays.toString(commands));
 
+        System.out.println(intervals);
+        int amount = 0;
+        for (int i = 0; i < intervals.size(); i++) {
+            if (intervals.get(i).coats >= k) {
+                amount += Math.abs(intervals.get(i).end - intervals.get(i).start);
+            }
+        }
+        System.out.println(amount);
     }
 
-    public static int getTotalArea() {
-        int sum = 0;
-        for (int i = 0; i < overlaps.size(); i++) {
-            sum += overlaps.get(i).getArea();
+    public static void removeDuplicates() {
+        for (int i = intervals.size() - 1; i >= 0; i--) {
+            for (int j = i + 1; j < intervals.size() - 1; j++) {
+                if (intervals.get(i).equals(intervals.get(j))) {
+                    intervals.remove(i);
+                }
+            }
         }
-        return sum;
     }
 
-    public static void connectOverlaps() {
-        if (overlaps.size() > 1) {
-            for (int i = overlaps.size() - 1; i >= 0; i--) {
-                for (int j = i - 1; j >= 0; j--) {
-                    if (overlaps.get(i).isOverlapping(overlaps.get(j))) {
-                        Interval a = overlaps.get(i).combine(overlaps.get(j));
-                        overlaps.remove(i);
-                        overlaps.remove(j);
-                        overlaps.add(a);
+    public static void combine() {
+        int startSize = intervals.size();
+        for (int i = 0; i < startSize; i++) {
+            for (int j = i + 1; j < startSize - 1; j++) {
+                if (overlapping(intervals.get(i), intervals.get(j)) && intervals.get(j).start != intervals.get(j).end) {
+                    Interval[] vals = splitUp(intervals.get(i), intervals.get(j));
+                    for (int h = 0; h < 3; h++) {
+                        if (vals[h].start != vals[h].end) {
+                            intervals.add(vals[h]);
+                        }
                     }
                 }
             }
         }
     }
-}
 
-class Interval {
-    public int start;
-    public int end;
-
-
-    public Interval(int a, int b) {
-        this.start = a;
-        this.end = b;
+    public static boolean inRange(int st, int en, int num) {
+        return st <= num && en >= num;
     }
 
-    public boolean isOverlapping(Interval i) {
-        if (this.start <= i.start && this.end >= i.start) {
+    public static boolean overlapping(Interval i1, Interval i2) {
+        if (inRange(i1.start, i1.end, i2.start) && inRange(i1.start, i1.end, i2.end)) {
             return true;
         }
-        if (this.start == i.end)
-            return true;
-        if (this.end == i.start) {
-            return true;
-        }
-        if (this.start <= i.end && this.end >= i.end)
-            return true;
         return false;
     }
 
-    public Interval combine(Interval other) {
-        return new Interval(Math.min(this.start, other.start), Math.max(this.end, other.end));
+    public static Interval[] splitUp(Interval i1, Interval i2) {
+        Interval[] arr = new Interval[3];
+        arr[0] = new Interval(i1.start, i2.start, i1.coats);
+        arr[1] = new Interval(i2.start, i2.end, i1.coats + i2.coats);
+        arr[2] = new Interval(i1.end, i2.end, i2.coats);
+        return arr;
     }
 
-    public int getArea() {
-        return end - start;
+
+}
+
+class Interval implements Comparable<Interval> {
+
+    int start;
+    int end;
+    int coats;
+
+    public Interval(int start, int end, int coats) {
+        this.start = start;
+        this.end = end;
+        this.coats = coats;
     }
 
+    //may use later
+    public boolean shouldCombine(Interval a) {
+        if (this.start <= a.start && this.end >= a.start && this.coats == a.coats) {
+            return true;
+        }
+        return false;
+    }
+
+    //public Interval[]
     public String toString() {
-        return "(" + start + " -> " + end + ")";
+        return "(" + this.start + ", " + this.end + ") X" + this.coats;
     }
+
+    public boolean equals(Object o) {
+        Interval i = (Interval) (o);
+        return this.start == i.start && this.end == i.end;
+    }
+
+    public int compareTo(Interval i1) {
+        if (this.start - this.end > i1.start - i1.end) {
+            return 1;
+        }
+        if (this.start - this.end == i1.start - i1.end) {
+            return 0;
+        } else {
+            return -1;
+        }
+
+    }
+
+
 }
